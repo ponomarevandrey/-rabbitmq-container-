@@ -1,0 +1,35 @@
+version: "3.7"
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    build:
+      context: ./rabbitmq
+      dockerfile: Dockerfile
+    container_name: "rabbitmq"
+    ports:
+      # Message broker itself:
+      - 5672:5672
+      # Web UI for managing message broker
+      - 15672:15672
+    # We map volumes so that our durable queues and logs are not lost on container restart. So, we map the 'data' and 'log' from the container to our local folder.
+    #
+    # '':ro' meaning - https://stackoverflow.com/questions/68759781/what-does-the-ro-in-docker-command-to-run-nginx-do
+    volumes:
+      - ./rabbitmq/rabbitmq_data:/var/lib/rabbitmq/
+      - ./rabbitmq/rabbitmq_log:/var/log/rabbitmq/
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    env_file:
+      - ./rabbitmq/.env
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:5672"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    # We're creating a bridge network called rabbitmq_nodejs_net that we are going to use later when we publish and consume the message with some Node.js code.
+    networks:
+      - rabbitmq_nodejs_net
+
+networks:
+  rabbitmq_nodejs_net:
+    driver: bridge
